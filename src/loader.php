@@ -20,6 +20,26 @@ function updatePageing(array $page)
     return $page;
 }
 
+function returnJsonHttpResponse($success, $data)
+{
+    // remove any string that could create an invalid JSON
+    // such as PHP Notice, Warning, logs...
+    ob_clean();
+
+    header("Content-type: application/json; charset=utf-8");
+
+    if ($success) {
+        http_response_code(200);
+    } else {
+        http_response_code(500);
+    }
+    
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
+
+    // making sure nothing is added
+    exit();
+}
+
 
 function loadPostFromInstagram()
 {
@@ -57,7 +77,7 @@ function loadPostFromInstagram()
         "media" => $page,
     ];
 
-    print_r(json_encode($response));
+    returnJsonHttpResponse(true, $response);
 }
 
 function loadPostsFromFacebook()
@@ -81,7 +101,7 @@ function loadPostsFromFacebook()
                 $page_id,
                 "",
                 $page_token,
-                urlencode("id,name, picture")
+                urlencode("id,name,picture")
             )
         ),
         true
@@ -97,6 +117,5 @@ function loadPostsFromFacebook()
         "posts" => $page,
     ];
 
-    print_r(json_encode($response));
+    returnJsonHttpResponse(true, $response);
 }
-?>
