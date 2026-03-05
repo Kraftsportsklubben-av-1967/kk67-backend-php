@@ -45,7 +45,7 @@ function loadPostFromInstagram()
 {
     global $graph_api_url, $user_id, $user_token;
 
-    $json = file_get_contents(
+    $json = @file_get_contents(
         sprintf(
             $graph_api_url,
             $user_id,
@@ -55,20 +55,33 @@ function loadPostFromInstagram()
         )
     );
 
+    if ($json === false) {
+        returnJsonHttpResponse(false, ["error" => "Failed to fetch Instagram media"]);
+    }
+
     $page = json_decode($json, true);
+    if (!is_array($page)) {
+        returnJsonHttpResponse(false, ["error" => "Invalid response from Instagram API"]);
+    }
     $page = updatePageing($page);
-    $metaData =  json_decode(
-        file_get_contents(
-            sprintf(
-                $graph_api_url,
-                $user_id,
-                "",
-                $user_token,
-                urlencode("name,profile_picture_url")
-            )
-        ),
-        true
+    $metaJson = @file_get_contents(
+        sprintf(
+            $graph_api_url,
+            $user_id,
+            "",
+            $user_token,
+            urlencode("name,profile_picture_url")
+        )
     );
+
+    if ($metaJson === false) {
+        returnJsonHttpResponse(false, ["error" => "Failed to fetch Instagram profile"]);
+    }
+
+    $metaData = json_decode($metaJson, true);
+    if (!is_array($metaData)) {
+        returnJsonHttpResponse(false, ["error" => "Invalid response from Instagram profile API"]);
+    }
 
     $response = [
         "id" => $metaData["id"],
@@ -84,7 +97,7 @@ function loadPostsFromFacebook()
 {
     global $graph_api_url, $page_id, $page_token;
 
-    $json = file_get_contents(
+    $json = @file_get_contents(
         sprintf(
             $graph_api_url,
             $page_id,
@@ -94,20 +107,30 @@ function loadPostsFromFacebook()
         )
     );
 
-    $metaData =  json_decode(
-        file_get_contents(
-            sprintf(
-                $graph_api_url,
-                $page_id,
-                "",
-                $page_token,
-                urlencode("id,name,picture")
-            )
-        ),
-        true
+    if ($json === false) {
+        returnJsonHttpResponse(false, ["error" => "Failed to fetch Facebook posts"]);
+    }
+
+    $metaJson = @file_get_contents(
+        sprintf(
+            $graph_api_url,
+            $page_id,
+            "",
+            $page_token,
+            urlencode("id,name,picture")
+        )
     );
 
+    if ($metaJson === false) {
+        returnJsonHttpResponse(false, ["error" => "Failed to fetch Facebook page metadata"]);
+    }
+
+    $metaData = json_decode($metaJson, true);
+
     $page = json_decode($json, true);
+    if (!is_array($page)) {
+        returnJsonHttpResponse(false, ["error" => "Invalid response from Facebook API"]);
+    }
     $page = updatePageing($page);
 
     $response = [
