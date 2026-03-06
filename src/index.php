@@ -1,6 +1,8 @@
 <?php
 
-$graph_api_url = "https://graph.facebook.com/v13.0/%d%s/?access_token=%s&fields=%s&limit=25";
+ob_start();
+
+$graph_api_url= "https://graph.facebook.com/v13.0/%d%s/?access_token=%s&fields=%s&limit=25";
 $pagination_token = 1;
 
 $page_id = getenv("FB_PAGE_ID");
