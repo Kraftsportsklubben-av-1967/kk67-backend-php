@@ -2,7 +2,7 @@
 
 ob_start();
 
-$graph_api_url = "https://graph.facebook.com/v13.0/%s%s/?access_token=%s&fields=%s&limit=25";
+$graph_api_url = "https://graph.facebook.com/v26.0/%s%s/?access_token=%s&fields=%s&limit=25";
 
 $page_id = getenv("FB_PAGE_ID");
 $user_id = getenv("FB_USER_ID");

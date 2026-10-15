@@ -23,7 +23,8 @@ FB_PAGE_ID=<id>
 
 ## Checks
 
-The smoke check uses fixtures and does not contact Facebook or require credentials.
+The smoke check verifies the Graph API version pin and response helpers using
+fixtures. It does not contact Facebook or require credentials.
 
 ```sh
 docker build -t kk67-backend-php .
