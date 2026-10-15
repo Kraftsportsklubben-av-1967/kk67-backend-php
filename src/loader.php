@@ -2,7 +2,7 @@
 
 function updatePageing(array $page)
 {
-    if (in_array("error", $page)) {
+    if (array_key_exists("error", $page)) {
         return $page;
     }
 

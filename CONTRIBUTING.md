@@ -20,3 +20,12 @@ FB_PAGE_KEY=<key>
 FB_USER_ID=<id>
 FB_PAGE_ID=<id>
 ```
+
+## Checks
+
+The smoke check uses fixtures and does not contact Facebook or require credentials.
+
+```sh
+docker build -t kk67-backend-php .
+docker run --rm --entrypoint php kk67-backend-php tests/smoke.php
+```
