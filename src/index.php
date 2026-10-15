@@ -1,5 +1,7 @@
 <?php
 
+ob_start();
+
 $graph_api_url = "https://graph.facebook.com/v13.0/%s%s/?access_token=%s&fields=%s&limit=25";
 
 $page_id = getenv("FB_PAGE_ID");
@@ -32,4 +34,3 @@ if ($path == "/posts/fb/" && $method == "GET") {
 if ($path == "/posts/ig/" && $method == "GET") {
     loadPostFromInstagram();
 }
-
