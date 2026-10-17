@@ -16,6 +16,9 @@ if (updatePageing($error) !== $error) {
 
 $id = "123456789012345678901234567890";
 $url = sprintf($graph_api_url, $id, "/posts", "fixture", "id");
+if (!str_starts_with($url, "https://graph.facebook.com/v26.0/")) {
+    throw new RuntimeException("Expected an explicit Graph API v26.0 request");
+}
 if (!str_contains($url, "/" . $id . "/posts/")) {
     throw new RuntimeException("Graph ID was not preserved as an opaque string");
 }

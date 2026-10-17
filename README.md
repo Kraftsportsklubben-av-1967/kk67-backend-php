@@ -4,6 +4,13 @@ In order to avoid leaking API_KEYS, the backend shall fetch all data from Facebo
 
 The backend is a simple PHP server / script.
 
+Facebook and Instagram requests explicitly use **Graph API v26.0**. Meta
+[automatically upgrades retired versions](https://developers.facebook.com/docs/graph-api/guides/versioning),
+so keep this pin on a supported version rather than relying on that fallback.
+
+An API version upgrade does not guarantee missing captions will be returned.
+The backend passes through Meta's media fields; clients must handle absent text.
+
 ![PHP](https://img.shields.io/badge/php-%23777BB4.svg?style=for-the-badge&logo=php&logoColor=white)
 
 # Contribute
