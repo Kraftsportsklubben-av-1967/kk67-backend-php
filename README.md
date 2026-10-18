@@ -34,3 +34,78 @@ Currently the REST API\* supports these endpoints:
 
 > For more info about REST APIs check this [video](https://www.youtube.com/watch?v=-MTSQjw5DrM&t=377s&ab_channel=Fireship).
 > Only the first 100 sec is about the concept of REST APIs..
+
+## Production deployment
+
+The `PHP deployment` workflow checks pull requests and pushes to `main`, the
+application's default branch. Only a **push to the default branch** can run the
+production job, after validation succeeds. Merging a PR triggers deployment;
+**direct pushes to `main` also deploy**. Pull requests only validate: they never
+receive FTP secrets, connect to FTP, or upload files. There is no manual
+deployment trigger or `pull_request_target` workflow.
+
+Configure the encrypted Actions secrets **`FTP_USERNAME`** and **`FTP_PASSWORD`**
+before rollout. At rollout, `main` has no branch protection, so the workflow
+does not enforce PR review or prevent direct pushes. This is a rollout caveat,
+not a deployment blocker. The workflow does not change GitHub protection
+settings. Provisioning secrets, merging, and production uploads remain separate
+operational actions.
+
+Both jobs check out a reviewed, immutable commit of
+[`kk67-docker`](https://github.com/Kraftsportsklubben-av-1967/kk67-docker) into
+`controller`, then this application's event commit into
+`controller\webroot\kk67-backend-php`. The controller pin must contain the
+integrated `scripts\upload-backend-php.ps1` and shared `scripts\ftps.psm1`, not an
+older uploader or a floating branch. Updating that pin requires review.
+
+### Production package and transport
+
+This application has **no Composer manifest or production dependencies**. PHP
+8.3, matching the Docker baseline, lints the package and runs the existing
+credential-free smoke check against its actual packaged entry point.
+The explicit package contains only:
+
+| Repository source | Deployed filename |
+| --- | --- |
+| `src/index.php` | `index.php` |
+| `src/loader.php` | `loader.php` |
+
+No `.env` files or backups, Git metadata, tests, documentation, Docker/development
+tooling, logs, caches, uploads, writable runtime data, or local credentials are
+packaged. Existing server-side `.env`, `.htaccess`, `.user.ini`, settings and data
+are neither overwritten nor deleted. If Composer or additional runtime files
+are introduced, update the reviewed package and tests first; Composer manifests
+currently fail closed rather than silently deploying without `vendor`.
+Production environment variables and existing host routing must already be
+configured. Deployment runs no migrations and changes no server configuration.
+
+The shared controller uploader uses **explicit FTPS with required TLS and
+certificate verification** to `ftp.c9ry3m6by.service.one`. The destination,
+relative to the FTP login home, is **`webroots/r1058768`**. This is not the
+account-name breadcrumb shown in the web file manager. CI passes an explicit
+`PSCredential` constructed from step-scoped encrypted secrets. Credentials are
+not command-line arguments or credential files.
+
+Production jobs are serialized, and a newer push does not cancel an upload
+already running. Only these two runtime files are uploaded, with `index.php`
+last; **nothing is recursively deleted remotely**. This is not an atomic
+release: an interrupted upload can leave a partial file or mixed versions, and
+obsolete files are not automatically removed. Entry-point-last ordering reduces
+but does not eliminate that window. Roll back with a reviewed revert and another
+`main` deployment; any stale-file cleanup needs a separate reviewed
+operation.
+
+### Local preview
+
+From a controller checkout containing this uploader, with PowerShell 7, `curl.exe`
+and PHP 8.3+ available:
+
+```powershell
+.\scripts\upload-backend-php.ps1 -WhatIf
+```
+
+This creates a two-file package under the application's gitignored `build`
+directory, lints it, runs the offline smoke test, and previews the upload without
+reading credentials, prompting, or connecting to FTP. Its generated package is
+removed on success or failure. Use `-AppPath '<backend-worktree>'` to validate a
+separate checkout. Do not run without `-WhatIf` unless a live upload is approved.

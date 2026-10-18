@@ -30,3 +30,21 @@ fixtures. It does not contact Facebook or require credentials.
 docker build -t kk67-backend-php .
 docker run --rm --entrypoint php kk67-backend-php tests/smoke.php
 ```
+
+With PHP 8.3+ installed, run `php tests/smoke.php` directly. An optional first
+argument selects a packaged `index.php`, so the deployment checks exercise the
+flat production layout rather than only the source tree.
+
+The default-branch deployment contract also has credential-free Python standard
+library checks:
+
+```powershell
+python -m unittest discover -s .\tests -p test_deployment.py -v
+```
+
+The controller repository owns `tests\test_upload_backend_php.py`, which checks
+the explicit runtime package, validation failures, symlink rejection, cleanup,
+and the shared uploader handoff using mocks (no FTP connection). The application
+workflow runs both suites, then the real uploader with `-WhatIf`. See the
+[deployment guide](README.md#production-deployment) before updating the package
+or the pinned controller commit.

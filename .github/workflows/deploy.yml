@@ -1,0 +1,94 @@
+name: PHP deployment
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: pwsh
+    working-directory: controller
+
+jobs:
+  validate:
+    name: Validate production package
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out deployment controller
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Kraftsportsklubben-av-1967/kk67-docker
+          ref: b01364ccf6809b284b1ec776a5dc6ac1b8337795
+          path: controller
+          persist-credentials: false
+          submodules: false
+      - name: Check out PHP application
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: controller\webroot\kk67-backend-php
+          persist-credentials: false
+          submodules: false
+      - name: Set up PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: none
+      - name: Test packaging and workflow guards
+        run: |
+          python -m unittest discover -s .\tests -p test_upload_backend_php.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'PHP uploader tests failed.' }
+          python -m unittest discover -s .\webroot\kk67-backend-php\tests -p test_deployment.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'Deployment workflow guard tests failed.' }
+      - name: Validate package without connecting
+        run: .\scripts\upload-backend-php.ps1 -WhatIf
+
+  deploy:
+    name: Deploy main
+    needs: validate
+    if: ${{ github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    runs-on: windows-latest
+    timeout-minutes: 20
+    concurrency:
+      group: backend-php-production
+      cancel-in-progress: false
+    steps:
+      - name: Check out deployment controller
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Kraftsportsklubben-av-1967/kk67-docker
+          ref: b01364ccf6809b284b1ec776a5dc6ac1b8337795
+          path: controller
+          persist-credentials: false
+          submodules: false
+      - name: Check out PHP application
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: controller\webroot\kk67-backend-php
+          persist-credentials: false
+          submodules: false
+      - name: Set up PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: none
+      - name: Publish packaged PHP backend
+        env:
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:FTP_USERNAME) -or [string]::IsNullOrEmpty($env:FTP_PASSWORD)) {
+            throw 'Configure both encrypted FTP_USERNAME and FTP_PASSWORD secrets before enabling deployment.'
+          }
+          $password = ConvertTo-SecureString $env:FTP_PASSWORD -AsPlainText -Force
+          $credential = [PSCredential]::new($env:FTP_USERNAME, $password)
+          .\scripts\upload-backend-php.ps1 -Credential $credential -Confirm:$false

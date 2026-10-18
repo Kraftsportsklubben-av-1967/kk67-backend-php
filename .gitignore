@@ -52,3 +52,6 @@
 /.web-server-pid
 
 .env
+
+# Deployment workflow checks
+/tests/__pycache__/
