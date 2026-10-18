@@ -12,7 +12,6 @@ permissions:
 defaults:
   run:
     shell: pwsh
-    working-directory: controller
 
 jobs:
   validate:
@@ -20,19 +19,10 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
-      - name: Check out deployment controller
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: Kraftsportsklubben-av-1967/kk67-docker
-          ref: b01364ccf6809b284b1ec776a5dc6ac1b8337795
-          path: controller
-          persist-credentials: false
-          submodules: false
       - name: Check out PHP application
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
-          path: controller\webroot\kk67-backend-php
           persist-credentials: false
           submodules: false
       - name: Set up PHP
@@ -41,12 +31,14 @@ jobs:
           php-version: '8.3'
           coverage: none
           tools: none
-      - name: Test packaging and workflow guards
+      - name: Set up Node for credential parser tests
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: Test deployment scripts and guards
         run: |
-          python -m unittest discover -s .\tests -p test_upload_backend_php.py -v
-          if ($LASTEXITCODE -ne 0) { throw 'PHP uploader tests failed.' }
-          python -m unittest discover -s .\webroot\kk67-backend-php\tests -p test_deployment.py -v
-          if ($LASTEXITCODE -ne 0) { throw 'Deployment workflow guard tests failed.' }
+          python -m unittest discover -s .\tests -p 'test_*.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Deployment tests failed.' }
       - name: Validate package without connecting
         run: .\scripts\upload-backend-php.ps1 -WhatIf
 
@@ -60,19 +52,10 @@ jobs:
       group: backend-php-production
       cancel-in-progress: false
     steps:
-      - name: Check out deployment controller
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: Kraftsportsklubben-av-1967/kk67-docker
-          ref: b01364ccf6809b284b1ec776a5dc6ac1b8337795
-          path: controller
-          persist-credentials: false
-          submodules: false
       - name: Check out PHP application
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
-          path: controller\webroot\kk67-backend-php
           persist-credentials: false
           submodules: false
       - name: Set up PHP

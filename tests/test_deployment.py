@@ -3,10 +3,9 @@ import re
 import unittest
 
 
-WORKFLOW = (
-    Path(__file__).resolve().parents[1]
-    .joinpath(".github", "workflows", "deploy.yml")
-    .read_text(encoding="utf-8")
+ROOT = Path(__file__).resolve().parents[1]
+WORKFLOW = ROOT.joinpath(".github", "workflows", "deploy.yml").read_text(
+    encoding="utf-8"
 )
 VALIDATE = WORKFLOW.split("\n  validate:\n", 1)[1].split("\n  deploy:\n", 1)[0]
 DEPLOY = WORKFLOW.split("\n  deploy:\n", 1)[1]
@@ -67,38 +66,45 @@ class DeploymentWorkflowTests(unittest.TestCase):
         self.assertIn("[PSCredential]::new($env:FTP_USERNAME, $password)", publish)
         self.assertIn("-Credential $credential -Confirm:$false", publish)
 
-    def test_controller_and_application_checkouts_are_separate_and_read_only(self):
+    def test_each_job_checks_out_only_this_repository(self):
         self.assertIn("permissions:\n  contents: read\n", WORKFLOW)
+        self.assertEqual(WORKFLOW.count("uses: actions/checkout@"), 2)
         for job in (VALIDATE, DEPLOY):
-            controller = step(job, "Check out deployment controller")
             app = step(job, "Check out PHP application")
-            self.assertIn(
-                "repository: Kraftsportsklubben-av-1967/kk67-docker", controller
-            )
-            self.assertIn("path: controller\n", controller)
-            self.assertIn("path: controller\\webroot\\kk67-backend-php\n", app)
+            self.assertEqual(job.count("uses: actions/checkout@"), 1)
             self.assertIn("ref: ${{ github.sha }}", app)
-            for checkout in (controller, app):
-                self.assertIn("persist-credentials: false", checkout)
-                self.assertIn("submodules: false", checkout)
+            self.assertIn("persist-credentials: false", app)
+            self.assertIn("submodules: false", app)
+            self.assertNotIn("repository:", job)
+            self.assertNotIn("path:", app)
+        self.assertNotRegex(
+            WORKFLOW,
+            r"(?i)controller|kk67-docker|git\s+clone|gh\s+repo\s+clone|"
+            r"Invoke-WebRequest|Invoke-RestMethod|DownloadFile",
+        )
 
-    def test_controller_is_pinned_to_one_immutable_integrated_commit(self):
-        pins = [
-            re.search(
-                r"^\s+ref: ([0-9a-f]{40})$",
-                step(job, "Check out deployment controller"),
-                re.MULTILINE,
-            )
-            for job in (VALIDATE, DEPLOY)
-        ]
-        self.assertTrue(all(pins), "Controller refs must be full commit SHAs")
-        self.assertEqual(pins[0].group(1), pins[1].group(1))
+    def test_deployment_scripts_and_tests_are_owned_by_this_repository(self):
+        for relative in (
+            ("scripts", "upload-backend-php.ps1"),
+            ("scripts", "ftps.psm1"),
+            ("tests", "test_upload_backend_php.py"),
+            ("tests", "test_ftps.py"),
+        ):
+            self.assertTrue(ROOT.joinpath(*relative).is_file(), relative)
+        self.assertIn(
+            "python -m unittest discover -s .\\tests -p 'test_*.py' -v", VALIDATE
+        )
+        self.assertIn("run: .\\scripts\\upload-backend-php.ps1 -WhatIf", VALIDATE)
+        self.assertIn(".\\scripts\\upload-backend-php.ps1 -Credential", DEPLOY)
 
     def test_actions_are_pinned_and_php_matches_the_docker_baseline(self):
         actions = re.findall(r"^\s+uses: ([^@\s]+)@(\S+)", WORKFLOW, re.MULTILINE)
-        self.assertEqual(len(actions), 6)
+        self.assertEqual(len(actions), 5)
         for action, pin in actions:
-            self.assertIn(action, ("actions/checkout", "shivammathur/setup-php"))
+            self.assertIn(
+                action,
+                ("actions/checkout", "shivammathur/setup-php", "actions/setup-node"),
+            )
             self.assertRegex(pin, r"^[0-9a-f]{40}$")
         for job in (VALIDATE, DEPLOY):
             self.assertIn("runs-on: windows-latest", job)
@@ -106,6 +112,8 @@ class DeploymentWorkflowTests(unittest.TestCase):
             self.assertIn("php-version: '8.3'", php)
             self.assertIn("coverage: none", php)
             self.assertIn("tools: none", php)
+        node = step(VALIDATE, "Set up Node for credential parser tests")
+        self.assertIn("node-version: '24'", node)
 
 
 if __name__ == "__main__":

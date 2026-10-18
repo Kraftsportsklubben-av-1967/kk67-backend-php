@@ -51,12 +51,10 @@ not a deployment blocker. The workflow does not change GitHub protection
 settings. Provisioning secrets, merging, and production uploads remain separate
 operational actions.
 
-Both jobs check out a reviewed, immutable commit of
-[`kk67-docker`](https://github.com/Kraftsportsklubben-av-1967/kk67-docker) into
-`controller`, then this application's event commit into
-`controller\webroot\kk67-backend-php`. The controller pin must contain the
-integrated `scripts\upload-backend-php.ps1` and shared `scripts\ftps.psm1`, not an
-older uploader or a floating branch. Updating that pin requires review.
+Each job checks out **only this repository** at its event commit, with no
+submodules. The uploader, vendored FTPS module, and deployment regression tests
+live here under `scripts` and `tests`. CI does not check out another repository,
+pin a deployment controller, or fetch deployment scripts at runtime.
 
 ### Production package and transport
 
@@ -79,7 +77,7 @@ currently fail closed rather than silently deploying without `vendor`.
 Production environment variables and existing host routing must already be
 configured. Deployment runs no migrations and changes no server configuration.
 
-The shared controller uploader uses **explicit FTPS with required TLS and
+The app-local uploader uses **explicit FTPS with required TLS and
 certificate verification** to `ftp.c9ry3m6by.service.one`. The destination,
 relative to the FTP login home, is **`webroots/r1058768`**. This is not the
 account-name breadcrumb shown in the web file manager. CI passes an explicit
@@ -97,8 +95,8 @@ operation.
 
 ### Local preview
 
-From a controller checkout containing this uploader, with PowerShell 7, `curl.exe`
-and PHP 8.3+ available:
+From this backend repository, with PowerShell 7, `curl.exe` and PHP 8.3+
+available:
 
 ```powershell
 .\scripts\upload-backend-php.ps1 -WhatIf
@@ -109,3 +107,24 @@ directory, lints it, runs the offline smoke test, and previews the upload withou
 reading credentials, prompting, or connecting to FTP. Its generated package is
 removed on success or failure. Use `-AppPath '<backend-worktree>'` to validate a
 separate checkout. Do not run without `-WhatIf` unless a live upload is approved.
+
+For a separately approved local upload, credentials default to this repository's
+private `.env` beside `README.md`. Node.js **20.12+** parses only `FTP_USERNAME`
+and `FTP_PASSWORD`; it does not export or execute other keys. A partial pair
+fails before connecting. If the default file is absent or both keys are empty,
+the uploader uses a secure credential prompt.
+
+To retain an existing private credential file elsewhere, pass its path without
+copying any passwords:
+
+```powershell
+.\scripts\upload-backend-php.ps1 -EnvFilePath 'D:\dev\kk67-docker\.env' -WhatIf
+```
+
+`-WhatIf` never reads or validates that file. During a real upload, an explicitly
+selected missing file fails instead of falling back to the default file or a
+prompt. An explicit `-Credential <PSCredential>` overrides the file, even if the
+selected path is missing. CI always supplies that explicit credential from its
+step-scoped secrets. `-AppPath` changes the packaged code, not the default
+credential-file location; use `-EnvFilePath` separately when needed. Never commit
+credential files or backups.
