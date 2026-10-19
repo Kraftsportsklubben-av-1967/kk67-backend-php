@@ -16,7 +16,7 @@ defaults:
 jobs:
   validate:
     name: Validate production package
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Check out PHP application
@@ -37,16 +37,16 @@ jobs:
           node-version: '24'
       - name: Test deployment scripts and guards
         run: |
-          python -m unittest discover -s .\tests -p 'test_*.py' -v
+          python -m unittest discover -s tests -p 'test_*.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Deployment tests failed.' }
       - name: Validate package without connecting
-        run: .\scripts\upload-backend-php.ps1 -WhatIf
+        run: .\scripts\upload-backend-php.ps1 -WhatIf -SkipUnchangedImages
 
   deploy:
     name: Deploy main
     needs: validate
     if: ${{ github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     concurrency:
       group: backend-php-production
@@ -74,4 +74,4 @@ jobs:
           }
           $password = ConvertTo-SecureString $env:FTP_PASSWORD -AsPlainText -Force
           $credential = [PSCredential]::new($env:FTP_USERNAME, $password)
-          .\scripts\upload-backend-php.ps1 -Credential $credential -Confirm:$false
+          .\scripts\upload-backend-php.ps1 -Credential $credential -Confirm:$false -SkipUnchangedImages

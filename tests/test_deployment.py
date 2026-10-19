@@ -92,7 +92,7 @@ class DeploymentWorkflowTests(unittest.TestCase):
         ):
             self.assertTrue(ROOT.joinpath(*relative).is_file(), relative)
         self.assertIn(
-            "python -m unittest discover -s .\\tests -p 'test_*.py' -v", VALIDATE
+            "python -m unittest discover -s tests -p 'test_*.py' -v", VALIDATE
         )
         self.assertIn("run: .\\scripts\\upload-backend-php.ps1 -WhatIf", VALIDATE)
         self.assertIn(".\\scripts\\upload-backend-php.ps1 -Credential", DEPLOY)
@@ -107,13 +107,20 @@ class DeploymentWorkflowTests(unittest.TestCase):
             )
             self.assertRegex(pin, r"^[0-9a-f]{40}$")
         for job in (VALIDATE, DEPLOY):
-            self.assertIn("runs-on: windows-latest", job)
+            self.assertIn("runs-on: ubuntu-latest", job)
             php = step(job, "Set up PHP")
             self.assertIn("php-version: '8.3'", php)
             self.assertIn("coverage: none", php)
             self.assertIn("tools: none", php)
         node = step(VALIDATE, "Set up Node for credential parser tests")
         self.assertIn("node-version: '24'", node)
+
+    def test_incremental_images_are_enabled_for_preview_and_production(self):
+        for job in (VALIDATE, DEPLOY):
+            self.assertRegex(
+                job,
+                r"upload-backend-php\.ps1[^\r\n]*-SkipUnchangedImages",
+            )
 
 
 if __name__ == "__main__":

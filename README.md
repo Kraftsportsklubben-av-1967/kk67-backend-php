@@ -37,8 +37,8 @@ Currently the REST API\* supports these endpoints:
 
 ## Production deployment
 
-The `PHP deployment` workflow checks pull requests and pushes to `main`, the
-application's default branch. Only a **push to the default branch** can run the
+The `PHP deployment` workflow runs on Ubuntu and checks pull requests and pushes
+to `main`, the application's default branch. Only a **push to the default branch** can run the
 production job, after validation succeeds. Merging a PR triggers deployment;
 **direct pushes to `main` also deploy**. Pull requests only validate: they never
 receive FTP secrets, connect to FTP, or upload files. There is no manual
@@ -93,14 +93,32 @@ but does not eliminate that window. Roll back with a reviewed revert and another
 `main` deployment; any stale-file cleanup needs a separate reviewed
 operation.
 
+CI enables `-SkipUnchangedImages`, matching the frontend's SHA-256 comparison
+against `.kk67-image-state.json` in the FTP destination. New or changed images
+upload; unchanged images are skipped. State is invalidated before writes and
+completed before `index.php`. Missing, interrupted or invalid state is reported
+and rebuilt with a full image upload; authentication, TLS and network errors stop
+deployment. State contains paths and hashes, never credentials.
+
+The current two-file PHP package contains **no images**, so it neither uploads
+photos nor reads or writes image state. This option does not widen the allowlist:
+server-owned photos and uploads remain untouched. If reviewed static images are
+added to the package later, their first deployment establishes a full baseline.
+Do not overlap manual uploads with CI. After out-of-band remote changes, omit
+`-SkipUnchangedImages` for a full image refresh.
+
 ### Local preview
 
-From this backend repository, with PowerShell 7, `curl.exe` and PHP 8.3+
+From this backend repository on Windows or Linux, with PowerShell 7, native
+`curl` with FTPS support and PHP 8.3+
 available:
 
 ```powershell
 .\scripts\upload-backend-php.ps1 -WhatIf
 ```
+
+Add `-SkipUnchangedImages` for CI's image handling. Native curl is selected from
+the first application on `PATH`, ignoring PowerShell aliases and duplicate matches.
 
 This creates a two-file package under the application's gitignored `build`
 directory, lints it, runs the offline smoke test, and previews the upload without

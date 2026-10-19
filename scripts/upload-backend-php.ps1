@@ -2,7 +2,8 @@
 param(
     [PSCredential] $Credential,
     [string] $AppPath = (Split-Path -Parent $PSScriptRoot),
-    [string] $EnvFilePath
+    [string] $EnvFilePath,
+    [switch] $SkipUnchangedImages
 )
 
 Set-StrictMode -Version Latest
@@ -87,6 +88,7 @@ try {
         FtpHost = 'ftp.c9ry3m6by.service.one'
         RemotePath = 'webroots/r1058768'
         PublishLast = 'index.php'
+        SkipUnchangedImages = $SkipUnchangedImages
         WhatIf = [bool] $WhatIfPreference
     }
     if ($PSBoundParameters.ContainsKey('Credential')) {

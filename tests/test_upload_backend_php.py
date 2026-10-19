@@ -37,6 +37,7 @@ function Send-FtpsDirectory {
         [string] $RemotePath,
         [PSCredential] $Credential,
         [string] $PublishLast,
+        [switch] $SkipUnchangedImages,
         [string] $EnvFilePath
     )
     $files = @{}
@@ -50,6 +51,7 @@ function Send-FtpsDirectory {
         host = $FtpHost
         remote = $RemotePath
         publishLast = $PublishLast
+        skipUnchangedImages = [bool] $SkipUnchangedImages
         hasCredential = $PSBoundParameters.ContainsKey('Credential')
         hasEnvFilePath = $PSBoundParameters.ContainsKey('EnvFilePath')
         envFilePath = $EnvFilePath
@@ -201,6 +203,17 @@ $credential = [PSCredential]::new('fixture-user', $securePassword)
         )
         self.assert_clean()
 
+    def test_incremental_images_does_not_expand_the_production_package(self):
+        for relative in ("src/photo.jpg", "assets/logo.png", "uploads/photo.jpg"):
+            path = self.app.joinpath(relative)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"server-owned or unreviewed image")
+        result = self.invoke("-SkipUnchangedImages")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue(self.upload()["skipUnchangedImages"])
+        self.assertEqual(set(self.upload()["files"]), {"index.php", "loader.php"})
+        self.assert_clean()
+
     def test_whatif_reuses_the_helper_without_credentials_or_network(self):
         self.root.joinpath(".env").write_text(
             "FTP_USERNAME=incomplete\n", encoding="utf-8"
@@ -309,26 +322,28 @@ $credential = [PSCredential]::new('fixture-user', $securePassword)
         self.assertEqual(self.php_calls(), [])
         self.assert_clean()
 
-    @unittest.skipUnless(os.name == "nt", "NTFS junctions are Windows-specific")
-    def test_source_directory_junction_is_rejected(self):
+    def test_source_directory_link_is_rejected(self):
         source = self.app.joinpath("src")
         original = self.app.joinpath("src-original")
         source.rename(original)
-        junction = subprocess.run(
-            [
-                PWSH,
-                "-NoLogo",
-                "-NoProfile",
-                "-NonInteractive",
-                "-Command",
-                f"New-Item -ItemType Junction -Path {ps_quote(source)} "
-                f"-Target {ps_quote(original)} -ErrorAction Stop | Out-Null",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        self.assertEqual(junction.returncode, 0, junction.stdout + junction.stderr)
+        if os.name == "nt":
+            junction = subprocess.run(
+                [
+                    PWSH,
+                    "-NoLogo",
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-Command",
+                    f"New-Item -ItemType Junction -Path {ps_quote(source)} "
+                    f"-Target {ps_quote(original)} -ErrorAction Stop | Out-Null",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            self.assertEqual(junction.returncode, 0, junction.stdout + junction.stderr)
+        else:
+            source.symlink_to(original, target_is_directory=True)
         try:
             result = self.invoke()
             self.assertNotEqual(result.returncode, 0)
@@ -337,7 +352,10 @@ $credential = [PSCredential]::new('fixture-user', $securePassword)
             self.assertEqual(self.php_calls(), [])
             self.assert_clean()
         finally:
-            source.rmdir()
+            if os.name == "nt":
+                source.rmdir()
+            else:
+                source.unlink()
 
 
 if __name__ == "__main__":
