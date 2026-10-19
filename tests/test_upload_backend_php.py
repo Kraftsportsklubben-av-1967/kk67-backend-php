@@ -274,7 +274,9 @@ $credential = [PSCredential]::new('fixture-user', $securePassword)
                 try:
                     result = self.invoke()
                     self.assertNotEqual(result.returncode, 0)
-                    self.assertIn("explicit production package", result.stderr)
+                    self.assertRegex(
+                        result.stderr, r"explicit[\s|]+production[\s|]+package"
+                    )
                     self.assertFalse(self.upload_log.exists())
                     self.assertEqual(self.php_calls(), [])
                     self.assert_clean()
