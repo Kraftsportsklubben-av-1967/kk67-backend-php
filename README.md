@@ -11,6 +11,13 @@ so keep this pin on a supported version rather than relying on that fallback.
 An API version upgrade does not guarantee missing captions will be returned.
 The backend passes through Meta's media fields; clients must handle absent text.
 
+If a feed returns HTTP 500, check the server log for `feed request failed` and
+verify the configured Meta credentials and upstream availability. Failures return
+a generic JSON `error`, never upstream messages or credential-bearing URLs.
+Each Graph request has a ten-second socket timeout. A successful empty feed, or
+one without paging metadata, remains HTTP 200; clients must distinguish it from
+an error.
+
 ![PHP](https://img.shields.io/badge/php-%23777BB4.svg?style=for-the-badge&logo=php&logoColor=white)
 
 # Contribute
