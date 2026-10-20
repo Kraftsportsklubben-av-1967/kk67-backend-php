@@ -35,6 +35,14 @@ Currently the REST API\* supports these endpoints:
 > For more info about REST APIs check this [video](https://www.youtube.com/watch?v=-MTSQjw5DrM&t=377s&ab_channel=Fireship).
 > Only the first 100 sec is about the concept of REST APIs..
 
+## Browser origins
+
+CORS allows both production origins, `https://kk-67.com` and
+`https://www.kk-67.com`, plus `http://localhost:3000` for development.
+Other origins do not receive an `Access-Control-Allow-Origin` header.
+Responses include `Vary: Origin` even for denied or absent origins, so caches
+do not reuse the wrong origin's CORS headers.
+
 ## Production deployment
 
 The `PHP deployment` workflow runs on Ubuntu and checks pull requests and pushes

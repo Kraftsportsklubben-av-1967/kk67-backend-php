@@ -11,11 +11,15 @@ $page_token =  getenv('FB_PAGE_KEY');
 
 require "loader.php";
 
-$allowed_origins = ["https://www.kk-67.com", "http://localhost:3000"];
+$allowed_origins = [
+    "https://kk-67.com",
+    "https://www.kk-67.com",
+    "http://localhost:3000",
+];
 $origin = $_SERVER["HTTP_ORIGIN"] ?? "";
+header("Vary: Origin");
 if (in_array($origin, $allowed_origins, true)) {
     header("Access-Control-Allow-Origin: $origin");
-    header("Vary: Origin");
 }
 header('Access-Control-Allow-Methods: POST,GET,OPTIONS');
 header('Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept');
