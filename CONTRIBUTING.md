@@ -52,7 +52,13 @@ encoding, entry-point-last ordering, and failure propagation. No test connects
 to FTP. `tests\test_deployment.py` enforces the PR/default-branch boundary and
 own-repository-only checkouts.
 
-The workflow runs all three suites, then the real uploader with `-WhatIf`, which
+The workflow runs all Python suites, then the real uploader with `-WhatIf`, which
 lints the package and executes its PHP smoke check without credentials or an FTP
 connection. See the [deployment guide](README.md#production-deployment) before
 changing the local scripts or production package.
+
+`tests\test_feed.py` exercises both feed endpoints through the packaged PHP entry
+point. A test-only stream wrapper replaces Graph requests with synthetic responses;
+no Meta credentials or network access are needed. It covers optional captions and
+mixed media, feeds without paging, upstream failures, malformed responses, safe
+error logging and CORS headers on errors.
