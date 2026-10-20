@@ -7,7 +7,7 @@ set_error_handler(static function (int $severity, string $message, string $file,
 $_SERVER["REQUEST_URI"] = "/";
 $_SERVER["REQUEST_METHOD"] = "GET";
 
-require __DIR__ . "/../src/index.php";
+require $argv[1] ?? __DIR__ . "/../src/index.php";
 
 $error = ["error" => ["message" => "fixture"]];
 if (updatePageing($error) !== $error) {

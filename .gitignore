@@ -52,3 +52,10 @@
 /.web-server-pid
 
 .env
+.env.*
+.env~
+..env.un~
+!.env.example
+
+# Deployment workflow checks
+/tests/__pycache__/

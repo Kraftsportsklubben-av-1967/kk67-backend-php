@@ -30,3 +30,29 @@ fixtures. It does not contact Facebook or require credentials.
 docker build -t kk67-backend-php .
 docker run --rm --entrypoint php kk67-backend-php tests/smoke.php
 ```
+
+With PHP 8.3+ installed, run `php tests/smoke.php` directly. An optional first
+argument selects a packaged `index.php`, so the deployment checks exercise the
+flat production layout rather than only the source tree.
+
+The deployment checks use Python's standard library, PowerShell 7, `curl.exe`,
+and Node.js 20.12+ (CI uses Node 24). From this repository:
+
+```powershell
+python -m unittest discover -s .\tests -p 'test_*.py' -v
+.\scripts\upload-backend-php.ps1 -WhatIf
+```
+
+`tests\test_upload_backend_php.py` checks the explicit runtime package, validation
+failures, symlink rejection, cleanup, and credential-file forwarding using a
+mock transport. `tests\test_ftps.py` exercises the real local FTPS module with
+fake curl and real Node dotenv parsing: required TLS, stdin-only credentials,
+credential precedence, external and missing files, preview isolation, preflight,
+encoding, entry-point-last ordering, and failure propagation. No test connects
+to FTP. `tests\test_deployment.py` enforces the PR/default-branch boundary and
+own-repository-only checkouts.
+
+The workflow runs all three suites, then the real uploader with `-WhatIf`, which
+lints the package and executes its PHP smoke check without credentials or an FTP
+connection. See the [deployment guide](README.md#production-deployment) before
+changing the local scripts or production package.
