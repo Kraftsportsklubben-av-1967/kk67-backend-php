@@ -18,20 +18,21 @@ def step(job, name):
 
 
 class DeploymentWorkflowTests(unittest.TestCase):
-    def test_only_default_branch_pushes_and_pull_requests_trigger_checks(self):
+    def test_checks_run_automatically_and_deployment_can_be_requested_manually(self):
         events = WORKFLOW.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
         self.assertEqual(
             events.strip(),
-            "push:\n    branches: [main]\n  pull_request:\n    branches: [main]",
+            "push:\n    branches: [main]\n"
+            "  pull_request:\n    branches: [main]\n"
+            "  workflow_dispatch:",
         )
         self.assertNotIn("pull_request_target", WORKFLOW)
-        self.assertNotIn("workflow_dispatch", WORKFLOW)
 
-    def test_deployment_requires_a_default_branch_push(self):
+    def test_deployment_requires_a_manual_default_branch_run(self):
         guard = re.search(r"^    if: (.+)$", DEPLOY, re.MULTILINE).group(1)
         self.assertEqual(
             guard,
-            "${{ github.event_name == 'push' && "
+            "${{ github.event_name == 'workflow_dispatch' && "
             "github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}",
         )
         self.assertNotIn("github.ref_protected", WORKFLOW)
