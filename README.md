@@ -52,12 +52,12 @@ do not reuse the wrong origin's CORS headers.
 
 ## Production deployment
 
-The `PHP deployment` workflow runs on Ubuntu and checks pull requests and pushes
-to `main`, the application's default branch. Merges and direct pushes **do not
-deploy**. Only a manual `workflow_dispatch` run selecting the default branch can
-run the production job, after that run's validation succeeds. Selecting another
-branch runs validation only. Automatic runs never receive FTP secrets, connect
-to FTP, or upload files. There is no `pull_request_target` workflow.
+The `PHP deployment` workflow runs on Ubuntu **only when requested manually**
+via `workflow_dispatch`. Pull requests, merges and direct pushes **do not run CI
+or deploy**. Selecting `main`, the application's default branch, runs validation
+and then the production job. Selecting another branch runs validation only,
+without FTP secrets, connections or uploads. There is no `pull_request_target`
+workflow.
 
 To deploy, open **Actions > PHP deployment > Run workflow**, select `main`, and
 run the workflow, or use:

@@ -18,14 +18,9 @@ def step(job, name):
 
 
 class DeploymentWorkflowTests(unittest.TestCase):
-    def test_checks_run_automatically_and_deployment_can_be_requested_manually(self):
+    def test_workflow_runs_only_when_requested_manually(self):
         events = WORKFLOW.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
-        self.assertEqual(
-            events.strip(),
-            "push:\n    branches: [main]\n"
-            "  pull_request:\n    branches: [main]\n"
-            "  workflow_dispatch:",
-        )
+        self.assertEqual(events.strip(), "workflow_dispatch:")
         self.assertNotIn("pull_request_target", WORKFLOW)
 
     def test_deployment_requires_a_manual_default_branch_run(self):
@@ -49,7 +44,7 @@ class DeploymentWorkflowTests(unittest.TestCase):
         self.assertNotIn("cancel-in-progress: true", WORKFLOW)
         self.assertNotIn("concurrency:", VALIDATE)
 
-    def test_pull_request_checks_have_no_ftp_credentials(self):
+    def test_validation_has_no_ftp_credentials(self):
         self.assertNotIn("secrets.", VALIDATE)
         self.assertNotIn("FTP_USERNAME", VALIDATE)
         self.assertNotIn("FTP_PASSWORD", VALIDATE)
