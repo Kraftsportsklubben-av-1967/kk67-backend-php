@@ -18,20 +18,16 @@ def step(job, name):
 
 
 class DeploymentWorkflowTests(unittest.TestCase):
-    def test_only_default_branch_pushes_and_pull_requests_trigger_checks(self):
+    def test_workflow_runs_only_when_requested_manually(self):
         events = WORKFLOW.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
-        self.assertEqual(
-            events.strip(),
-            "push:\n    branches: [main]\n  pull_request:\n    branches: [main]",
-        )
+        self.assertEqual(events.strip(), "workflow_dispatch:")
         self.assertNotIn("pull_request_target", WORKFLOW)
-        self.assertNotIn("workflow_dispatch", WORKFLOW)
 
-    def test_deployment_requires_a_default_branch_push(self):
+    def test_deployment_requires_a_manual_default_branch_run(self):
         guard = re.search(r"^    if: (.+)$", DEPLOY, re.MULTILINE).group(1)
         self.assertEqual(
             guard,
-            "${{ github.event_name == 'push' && "
+            "${{ github.event_name == 'workflow_dispatch' && "
             "github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}",
         )
         self.assertNotIn("github.ref_protected", WORKFLOW)
@@ -48,7 +44,7 @@ class DeploymentWorkflowTests(unittest.TestCase):
         self.assertNotIn("cancel-in-progress: true", WORKFLOW)
         self.assertNotIn("concurrency:", VALIDATE)
 
-    def test_pull_request_checks_have_no_ftp_credentials(self):
+    def test_validation_has_no_ftp_credentials(self):
         self.assertNotIn("secrets.", VALIDATE)
         self.assertNotIn("FTP_USERNAME", VALIDATE)
         self.assertNotIn("FTP_PASSWORD", VALIDATE)

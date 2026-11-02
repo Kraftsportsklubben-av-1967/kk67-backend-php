@@ -52,12 +52,19 @@ do not reuse the wrong origin's CORS headers.
 
 ## Production deployment
 
-The `PHP deployment` workflow runs on Ubuntu and checks pull requests and pushes
-to `main`, the application's default branch. Only a **push to the default branch** can run the
-production job, after validation succeeds. Merging a PR triggers deployment;
-**direct pushes to `main` also deploy**. Pull requests only validate: they never
-receive FTP secrets, connect to FTP, or upload files. There is no manual
-deployment trigger or `pull_request_target` workflow.
+The `PHP deployment` workflow runs on Ubuntu **only when requested manually**
+via `workflow_dispatch`. Pull requests, merges and direct pushes **do not run CI
+or deploy**. Selecting `main`, the application's default branch, runs validation
+and then the production job. Selecting another branch runs validation only,
+without FTP secrets, connections or uploads. There is no `pull_request_target`
+workflow.
+
+To deploy, open **Actions > PHP deployment > Run workflow**, select `main`, and
+run the workflow, or use:
+
+```sh
+gh workflow run deploy.yml --repo Kraftsportsklubben-av-1967/kk67-backend-php --ref main
+```
 
 Configure the encrypted Actions secrets **`FTP_USERNAME`** and **`FTP_PASSWORD`**
 before rollout. At rollout, `main` has no branch protection, so the workflow
@@ -69,7 +76,8 @@ operational actions.
 Each job checks out **only this repository** at its event commit, with no
 submodules. The uploader, vendored FTPS module, and deployment regression tests
 live here under `scripts` and `tests`. CI does not check out another repository,
-pin a deployment controller, or fetch deployment scripts at runtime.
+pin a deployment controller, or fetch deployment scripts at runtime. Production
+packages are uploaded directly from the runner; no Actions build artifact is retained.
 
 ### Production package and transport
 
@@ -99,7 +107,7 @@ account-name breadcrumb shown in the web file manager. CI passes an explicit
 `PSCredential` constructed from step-scoped encrypted secrets. Credentials are
 not command-line arguments or credential files.
 
-Production jobs are serialized, and a newer push does not cancel an upload
+Production jobs are serialized, and a newer run does not cancel an upload
 already running. Only these two runtime files are uploaded, with `index.php`
 last; **nothing is recursively deleted remotely**. This is not an atomic
 release: an interrupted upload can leave a partial file or mixed versions, and
